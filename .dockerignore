@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+
+# venvs & local stuff
+.venv/
+venv/
+.env
+.env.*
+*.db
+*.sqlite*
+/data/
+uploads/
+tmp/
+cache/
+
+# Git/IDE
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Node bits if present
+node_modules/

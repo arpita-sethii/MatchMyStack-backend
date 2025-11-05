@@ -1,0 +1,78 @@
+# ===============================
+# MatchMyStack Backend .gitignore
+# ===============================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+deployenv/
+myenv/
+ENV/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+
+# --- Local Config / Secrets ---
+.env
+*.env
+secrets.json
+config.json
+instance/
+.env.*
+
+# --- OS / IDE Files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs / Caches ---
+*.log
+logs/
+.cache/
+pytest_cache/
+coverage/
+.coverage
+htmlcov/
+
+# --- Build / Dist Files ---
+build/
+dist/
+*.egg
+*.egg-info/
+*.manifest
+*.spec
+
+# --- Temporary Files ---
+tmp/
+temp/
+*.bak
+*.tmp
+
+# --- Uploaded / Generated Files ---
+/data/uploads/
+/tmp/uploads/
+/uploads/
+*.db
+*.sqlite3
+
+# --- Docker ---
+# Ignore local build junk, but keep Dockerfile and docker-compose.yml
+**/docker-compose.override.yml
+**/docker-compose.local.yml
+*.pid
+
+# --- Misc ---
+nohup.out
+local_settings.py
