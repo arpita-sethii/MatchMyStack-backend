@@ -1,7 +1,24 @@
+# backend/app/services/embedding_engine.py
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from typing import Dict, List, Union
-import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ✅ CRITICAL: Don't load model at import time
+_model = None
+_model_name = "all-MiniLM-L6-v2"
+
+def get_model():
+    """Lazy load sentence transformer - only loads when first needed"""
+    global _model
+    if _model is None:
+        logger.info(f"🔄 Loading sentence transformer model '{_model_name}' (first use)...")
+        _model = SentenceTransformer(_model_name)
+        logger.info(f"✅ Model loaded successfully - embedding dimension: {_model.get_sentence_embedding_dimension()}")
+    return _model
+
 
 class EmbeddingEngine:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
@@ -9,9 +26,22 @@ class EmbeddingEngine:
         Initialize with a sentence transformer model
         all-MiniLM-L6-v2: Fast, 384 dimensions, good for semantic similarity
         Alternative: all-mpnet-base-v2 (768 dim, more accurate but slower)
+        
+        ✅ Model loads lazily on first use to reduce startup memory
         """
-        self.model = SentenceTransformer(model_name)
-        self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        global _model_name
+        _model_name = model_name
+        logger.info(f"EmbeddingEngine initialized (model '{model_name}' will load on first use)")
+    
+    @property
+    def model(self):
+        """Access model via lazy loading"""
+        return get_model()
+    
+    @property
+    def embedding_dim(self):
+        """Get embedding dimension (loads model if needed)"""
+        return self.model.get_sentence_embedding_dimension()
     
     def normalize_skills(self, skills: Union[List[str], Dict[str, List[str]]]) -> List[str]:
         """

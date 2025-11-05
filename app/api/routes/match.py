@@ -1,3 +1,4 @@
+# backend/app/api/routes/match.py
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -11,8 +12,27 @@ from typing import List, Any
 router = APIRouter(prefix="/match", tags=["matching"])
 logger = logging.getLogger(__name__)
 
-matcher = MatchingEngineWrapper()
-parser = ImprovedResumeParser()
+# ✅ FIX: Don't initialize at module level - use lazy loading
+_matcher = None
+_parser = None
+
+def get_matcher():
+    """Lazy load matcher on first use"""
+    global _matcher
+    if _matcher is None:
+        logger.info("🔄 Initializing MatchingEngineWrapper (first use)...")
+        _matcher = MatchingEngineWrapper()
+        logger.info("✅ MatchingEngineWrapper ready")
+    return _matcher
+
+def get_parser():
+    """Lazy load parser on first use"""
+    global _parser
+    if _parser is None:
+        logger.info("🔄 Initializing ImprovedResumeParser...")
+        _parser = ImprovedResumeParser()
+        logger.info("✅ ImprovedResumeParser ready")
+    return _parser
 
 
 @router.get("/ping")
@@ -32,6 +52,10 @@ async def upload_and_match_resume(
     top_k: int = 10
 ):
     """Upload resume, parse it, and return matching projects in one call."""
+
+    # ✅ Get instances lazily (loads on first request only)
+    parser = get_parser()
+    matcher = get_matcher()
 
     # 1️⃣ Read and validate file
     content = await file.read()
@@ -54,7 +78,7 @@ async def upload_and_match_resume(
     raw_text_len = parsed.get("total_text_length", 0)
     parsing_lib = parsed.get("parsing_library", "unknown")
     
-    # ONE-LINE SUMMARY LOG (as requested)
+    # ONE-LINE SUMMARY LOG
     logger.info(f"✓ Parsed {raw_text_len} chars with {parsing_lib} -> {len(all_skills)} skills found")
 
     # 3️⃣ Build the user profile from resume
@@ -161,10 +185,9 @@ async def upload_and_match_resume(
                     logger.warning(f"Project {p.id} has invalid embedding, using default")
                     project_embedding = [0.1] * 384
 
-        # Build candidate dict - THIS IS THE KEY FIX
-        # Each project becomes a "candidate" that we're matching the user against
+        # Build candidate dict
         candidate = {
-            "id": p.id,  # CRITICAL: Use actual project ID, not "resume"
+            "id": p.id,
             "user_id": p.id,
             "name": p.title or f"Project-{p.id}",
             "email": None,
@@ -193,18 +216,13 @@ async def upload_and_match_resume(
             logger.exception(f"Failed to persist project embeddings: {e}")
             db.rollback()
 
-    # 6️⃣ THE KEY FIX: We're matching USER (resume) against CANDIDATES (projects)
-    # The user is looking for projects, projects are looking for users
-    # So we match: does this user fit what the project needs?
+    # 6️⃣ Match user against projects
     try:
-        # We need to flip the logic: match each project as if it's looking for this user
         matches_list = []
         for candidate in candidates:
-            # For each project (candidate), check if the user (resume) is a good match
-            # We treat the project as the "searcher" and user as the "target"
             match = matcher.matcher.match_user_to_project(
-                user_data=user_profile,  # The resume/user
-                project_data=candidate   # Each project's requirements
+                user_data=user_profile,
+                project_data=candidate
             )
             matches_list.append(match)
         
@@ -216,7 +234,7 @@ async def upload_and_match_resume(
         logger.exception(f"Matching failed: {e}")
         raise HTTPException(status_code=500, detail=f"Matching failed: {str(e)}")
 
-    # ONE-LINE SUMMARY LOG (as requested)
+    # ONE-LINE SUMMARY LOG
     logger.info(f"✓ Found {len(projects)} projects ({missing_embeddings_count} missing embeddings); produced {len(ranked_matches)} matches")
 
     # Debug output
