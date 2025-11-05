@@ -64,8 +64,6 @@ temp/
 /data/uploads/
 /tmp/uploads/
 /uploads/
-*.db
-*.sqlite3
 
 # --- Docker ---
 # Ignore local build junk, but keep Dockerfile and docker-compose.yml
